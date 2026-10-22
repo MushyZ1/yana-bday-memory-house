@@ -248,21 +248,23 @@ export default function InteractionSystem({
     [camera, controlsRef, animateCameraTo],
   );
 
+  // Closing the TV from a click outside the screen.
+  // Order matters: start the camera flight FIRST, then update the store, so the
+  // store subscriber below sees that a camera move is running and does NOT
+  // re-lock the mouse mid-flight. The camera frame loop locks it when the move ends.
   const closeTV = useCallback(() => {
     if (!tvMode.current) return;
 
     tvMode.current = false;
 
+    const saved = savedCameraPose.current;
+
+    if (saved) animateCameraTo(saved, 0.75, true);
+
     useStore.getState().closeTV();
     useStore.getState().setVideoPlaying(false);
 
-    const saved = savedCameraPose.current;
-
-    if (saved) {
-      animateCameraTo(saved, 0.75, true);
-    } else if (!isFocused.current) {
-      controlsRef.current?.lock();
-    }
+    if (!saved && !isFocused.current) controlsRef.current?.lock();
   }, [animateCameraTo, controlsRef, isFocused]);
 
   // Pointer tracking.
@@ -306,6 +308,8 @@ export default function InteractionSystem({
   }, [controlsRef, isFocused]);
 
   // If TV is closed by its own UI button, also restore the camera.
+  // (This effect must stay AFTER the one above: that one runs first and sees
+  // tvMode still true, so it doesn't lock; this one then starts the flight.)
   useEffect(() => {
     const unsubscribe = useStore.subscribe((state, previous) => {
       if (!previous.tvOpen || state.tvOpen || !tvMode.current) return;

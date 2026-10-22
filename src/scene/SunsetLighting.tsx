@@ -95,6 +95,17 @@ function SunBeam() {
     return { position, quaternion, length };
   }, []);
 
+  // Created once. If this object were rebuilt on every render, the GPU
+  // program would be given brand new uniforms each time the page re-renders.
+  const uniforms = useMemo(
+    () => ({
+      uColor: { value: new THREE.Color("#ffbd70") },
+      uOpacity: { value: 0.13 },
+      uLength: { value: length },
+    }),
+    [length],
+  );
+
   return (
     <mesh position={position} quaternion={quaternion} frustumCulled={false}>
       <cylinderGeometry args={[0.01, 2.4, length, 64, 1, true]} />
@@ -104,17 +115,7 @@ function SunBeam() {
         depthWrite={false}
         side={THREE.DoubleSide}
         blending={THREE.AdditiveBlending}
-        uniforms={{
-          uColor: {
-            value: new THREE.Color("#ffbd70"),
-          },
-          uOpacity: {
-            value: 0.13,
-          },
-          uLength: {
-            value: length,
-          },
-        }}
+        uniforms={uniforms}
         vertexShader={`
           varying vec3 vLocalPosition;
           varying float vRadius;
@@ -135,7 +136,8 @@ function SunBeam() {
               projectionMatrix *
               modelViewMatrix *
               vec4(position, 1.0);
-          `}
+          }
+        `}
         fragmentShader={`
           uniform vec3 uColor;
           uniform float uOpacity;
@@ -169,7 +171,8 @@ function SunBeam() {
                 uOpacity;
 
             gl_FragColor = vec4(uColor, alpha);
-          `}
+          }
+        `}
       />
     </mesh>
   );
@@ -221,6 +224,15 @@ function DustParticles() {
       sizes,
     };
   }, []);
+
+  const uniforms = useMemo(
+    () => ({
+      uColor: { value: new THREE.Color("#ffe0a3") },
+      uOpacity: { value: 0.65 },
+      uSize: { value: 2.5 },
+    }),
+    [],
+  );
 
   useFrame((state, delta) => {
     if (!pointsRef.current) return;
@@ -307,17 +319,7 @@ function DustParticles() {
         transparent
         depthWrite={false}
         blending={THREE.AdditiveBlending}
-        uniforms={{
-          uColor: {
-            value: new THREE.Color("#ffe0a3"),
-          },
-          uOpacity: {
-            value: 0.65,
-          },
-          uSize: {
-            value: 2.5,
-          },
-        }}
+        uniforms={uniforms}
         vertexShader={`
           uniform float uSize;
 

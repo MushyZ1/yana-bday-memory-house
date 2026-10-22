@@ -4,31 +4,34 @@ import { useStore } from "../state/store";
 const videos = [
   {
     name: "HOPE",
-    src: "/media/edits/HOPE%20The%20Shawshank%20Redemption.mp4",
+    src: "/media/edits/clip1.mp4",
   },
   {
     name: "Lose My Mind",
-    src: "/media/edits/Lose%20My%20Mind%20-%20F1%20The%20Movie.mp4",
+    src: "/media/edits/clip2.mp4",
   },
   {
     name: "Sign of the Times",
-    src: "/media/edits/project-hail-mary-sign-of-the-times-4k-edit-720-ytshorts.savetube.me.mp4",
+    src: "/media/edits/clip3.mp4",
   },
   {
     name: "Sherlock",
-    src: "/media/edits/sherlock-thrift-shop-720-ytshorts.savetube.me.mp4",
+    src: "/media/edits/clip4.mp4",
   },
   {
     name: "STAY",
-    src: "/media/edits/STAY%20Interstellar%204K.mkv",
+    // NOTE: .mkv usually will NOT play in browsers. Convert it to .mp4, e.g.
+    //   ffmpeg -i "STAY Interstellar 4K.mkv" -c:v libx264 -c:a aac stay.mp4
+    // then change this path to "/media/edits/stay.mp4".
+    src: "/media/edits/clip5.mp4",
   },
   {
     name: "Game of Thrones",
-    src: "/media/edits/the-beauty-of-game-of-thrones-season-1-720-ytshorts.savetube.me.mp4",
+    src: "/media/edits/clip6.mp4",
   },
   {
     name: "True Love",
-    src: "/media/edits/the-pogues-true-love-outer-banks-ytmp4.savetube.vip.mp4",
+    src: "/media/edits/clip7.mp4",
   },
 ];
 
@@ -113,7 +116,10 @@ export default function TVScreen({ isOpen, onClose }: TVScreenProps) {
         ref={videoRef}
         src={currentVideo.src}
         playsInline
-        preload="auto"
+        // "none": the TV stays mounted while hidden, so "auto" would download a
+        // video at page load that the visitor may never watch. play() still
+        // works fine when the TV is opened.
+        preload="none"
         onEnded={nextVideo}
         onClick={nextVideo}
         onError={() => {

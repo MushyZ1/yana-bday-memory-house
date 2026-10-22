@@ -4,6 +4,19 @@ import GalleryExplorer from "./GalleryExplorer";
 
 export default function LaptopGallery() {
   const [hasOpened, setHasOpened] = useState(false);
+  // Minimized = the window is hidden but still "running" (it keeps its place
+  // in the folder). Clicking the desktop icon brings it back.
+  const [isMinimized, setIsMinimized] = useState(false);
+
+  const handleIconClick = () => {
+    setHasOpened(true);
+    setIsMinimized(false);
+  };
+
+  const handleClose = () => {
+    setHasOpened(false);
+    setIsMinimized(false);
+  };
 
   return (
     <div
@@ -24,9 +37,12 @@ export default function LaptopGallery() {
       {/* Desktop icon stays on the desktop */}
       <button
         id="gallery-desktop-icon"
+        className={hasOpened && isMinimized ? "has-minimized" : undefined}
         type="button"
-        onClick={() => setHasOpened(true)}
-        aria-label="Open My Pictures"
+        onClick={handleIconClick}
+        aria-label={
+          hasOpened && isMinimized ? "Restore My Pictures" : "Open My Pictures"
+        }
       >
         <img src="/media/gallery/gallery_icon.ico" alt="" draggable={false} />
         <span>My Pictures</span>
@@ -36,8 +52,10 @@ export default function LaptopGallery() {
       {hasOpened && (
         <GalleryExplorer
           hasOpened={hasOpened}
+          isMinimized={isMinimized}
           images={galleryData}
-          onClose={() => setHasOpened(false)}
+          onMinimize={() => setIsMinimized(true)}
+          onClose={handleClose}
         />
       )}
     </div>

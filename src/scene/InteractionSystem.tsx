@@ -39,9 +39,46 @@ const defaultHoldCorrection = new THREE.Quaternion().setFromAxisAngle(
 );
 
 const pressActions: Record<string, () => void> = {
-  Music_Player: () => useStore.getState().pressPlayer(),
+  Music_Player: () => {
+    useStore.getState().pressPlayer();
+    useStore
+      .getState()
+      .showHintOnce("music", "Clicking the music player changes the song");
+  },
   Laptop_Diary: () => useStore.getState().openDiary(),
 };
+
+// ---- Hints ----
+// Each one is shown only the first time it applies (see showHintOnce in the store).
+
+// Shown the first time you look at (hover) one of these.
+const hoverHints: Record<string, string> = {
+  Laptop_Model: "Click to look closer at the laptop",
+  Gaming_Monitor: "Click to look closer at the monitor",
+  TV_Model: "Click to watch the TV",
+  Laptop_Diary: "Click to open our diary",
+};
+const holdHint = "Click to hold";
+
+// Shown the first time you step up to one of these.
+const focusHints: Record<string, string> = {
+  Laptop_Model:
+    "Click “My Pictures” to browse · ← → flip through photos · Esc to go back",
+  Gaming_Monitor:
+    "Click a game to see photos · ← → flip through them · Esc to go back",
+};
+const defaultFocusHint = "Esc or click away to go back";
+
+function showFocusHint(name: string) {
+  const known = name in focusHints;
+
+  useStore
+    .getState()
+    .showHintOnce(
+      `focus:${known ? name : "default"}`,
+      known ? focusHints[name] : defaultFocusHint,
+    );
+}
 
 const focusSettings: Record<string, FocusOptions> = {
   Laptop_Model: {
@@ -244,6 +281,13 @@ export default function InteractionSystem({
       controlsRef.current?.unlock();
 
       useStore.getState().openTV();
+      useStore
+        .getState()
+        .showHintOnce(
+          "tv",
+          "Click the screen for the next video · ← → switch · Space pause · Esc to leave",
+          7000,
+        );
     },
     [camera, controlsRef, animateCameraTo],
   );
@@ -327,6 +371,34 @@ export default function InteractionSystem({
     return unsubscribe;
   }, [animateCameraTo]);
 
+  // Escape = "go back": leave the TV, or step away from a laptop / monitor /
+  // sticky note. It does nothing while the diary is open (the diary handles
+  // its own Escape), and it skips an Escape that a viewer already used to
+  // close itself (those call preventDefault first, in the capture phase).
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+
+      const state = useStore.getState();
+      if (state.diaryOpen) return;
+
+      if (tvMode.current || state.tvOpen) {
+        closeTV();
+        return;
+      }
+
+      if (focusedObject.current && !heldTarget.current) {
+        exitFocus();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeTV, exitFocus, focusedObject]);
+
   // Holdable-object pickup and return.
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
@@ -370,6 +442,9 @@ export default function InteractionSystem({
       };
 
       heldTarget.current = target;
+      useStore
+        .getState()
+        .showHintOnce("holding", "Click again to put it back");
     };
 
     document.addEventListener("pointerdown", handlePointerDown);
@@ -446,6 +521,7 @@ export default function InteractionSystem({
         if (!clickedTarget.userData.holdable) {
           focusObject(clickedTarget, getFocusSettings(clickedTarget));
           controlsRef.current?.unlock();
+          showFocusHint(clickedTarget.name);
           return;
         }
 
@@ -456,6 +532,7 @@ export default function InteractionSystem({
       if (!clickedTarget.userData.holdable) {
         focusObject(clickedTarget, getFocusSettings(clickedTarget));
         controlsRef.current?.unlock();
+        showFocusHint(clickedTarget.name);
       }
     };
 
@@ -523,6 +600,22 @@ export default function InteractionSystem({
       if (nextTarget !== currentTarget.current) {
         currentTarget.current = nextTarget;
         onMeshesChange(getMeshes(nextTarget));
+
+        // First time you look at something clickable, say what clicking does.
+        // (Skipped while the diary covers the screen.)
+        if (nextTarget && !useStore.getState().diaryOpen) {
+          const holdable = Boolean(nextTarget.userData.holdable);
+          const text = holdable ? holdHint : hoverHints[nextTarget.name];
+
+          if (text) {
+            useStore
+              .getState()
+              .showHintOnce(
+                `hover:${holdable ? "holdable" : nextTarget.name}`,
+                text,
+              );
+          }
+        }
       }
     }
 

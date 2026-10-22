@@ -10,9 +10,14 @@ import { EffectComposer, Outline, GodRays } from "@react-three/postprocessing";
 import Room from "./Room";
 import InteractionSystem from "./InteractionSystem";
 import SunsetLighting from "./SunsetLighting";
+import MagicMoment, { MagicBloom } from "./MagicMoment";
+import { useStore } from "../state/store";
 
 export default function House() {
   const [meshesToOutline, setMeshesToOutline] = useState<THREE.Object3D[]>([]);
+
+  // True while our song's "magic" is showing (see MagicMoment).
+  const magicVisible = useStore((state) => state.magicVisible);
 
   const [sun, setSun] = useState<THREE.Mesh | null>(null);
 
@@ -47,6 +52,9 @@ export default function House() {
           onMeshesChange={setMeshesToOutline}
         />
 
+        {/* Our song: golden magic and a gentle camera sway */}
+        <MagicMoment />
+
         <EffectComposer autoClear={false}>
           <Outline
             selection={meshesToOutline}
@@ -67,6 +75,9 @@ export default function House() {
               blur
             />
           )}
+
+          {/* Shiny glow, only while the magic is showing */}
+          {magicVisible && <MagicBloom />}
         </EffectComposer>
       </Canvas>
 

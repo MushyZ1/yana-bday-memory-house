@@ -138,8 +138,12 @@ function TVVideoScreenPortal({
         width: "11920px",
         height: "6080px",
         overflow: "hidden",
+        // Clicks only reach the screen while the TV is open. When it's closed,
+        // clicks go through to the 3D room (so you can click the TV again).
         pointerEvents: isOpen ? "auto" : "none",
-        display: isOpen ? "block" : "none",
+        // Always shown, even when you step away: the TV keeps the last frame
+        // (paused), just like the laptop keeps its window.
+        display: "block",
         background: "#000",
       }}
     >

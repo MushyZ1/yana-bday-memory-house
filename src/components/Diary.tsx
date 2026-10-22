@@ -177,7 +177,9 @@ export default function Diary() {
         </div>
       </div>
 
-      <p className="diary-hint">Click outside the diary to close it</p>
+      <p className="diary-hint">
+        ← → turn pages · Esc or click outside to close
+      </p>
     </div>
   );
 }

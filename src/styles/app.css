@@ -1106,3 +1106,108 @@ body,
 .diary-backdrop.is-open .diary-hint {
   opacity: 1;
 }
+
+/* ---- Minimized My Pictures window (hidden, restored from the desktop icon) ---- */
+
+#laptop-screen .xp-window.is-minimized {
+  display: none;
+}
+
+/* The desktop icon lights up while its window is minimized */
+#gallery-desktop-icon.has-minimized {
+  background: rgb(0 80 180 / 35%);
+  outline: 1px dotted white;
+}
+
+/* ---- Hints (small messages at the bottom of the screen) ---- */
+
+.hint-layer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 6%;
+  z-index: 20; /* above the 3D scene, below the diary (z-index 50) */
+  display: flex;
+  justify-content: center;
+  padding: 0 16px;
+  pointer-events: none;
+}
+
+.hint-toast {
+  max-width: min(720px, 92vw);
+  padding: 10px 20px;
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 999px;
+  background: rgb(14 10 8 / 72%);
+  color: #fff3e0;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 60%);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  animation-name: hint-fade;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+  user-select: none;
+}
+
+@keyframes hint-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  8% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  88% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}
+
+/* ---- Our song: a soft golden glow over the whole screen ---- */
+
+.magic-glow {
+  position: fixed;
+  inset: 0;
+  z-index: 15; /* above the 3D scene, below hints (20) and the diary (50) */
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(
+      ellipse at 28% 18%,
+      rgb(255 205 110 / 30%) 0%,
+      rgb(255 180 80 / 10%) 38%,
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse at 50% 120%,
+      rgb(255 200 120 / 22%) 0%,
+      transparent 60%
+    );
+  /* slow fade out when the song changes */
+  transition: opacity 3s ease;
+}
+
+.magic-glow.is-on {
+  opacity: 1;
+  animation: magic-glow-pulse 5s ease-in-out infinite;
+}
+
+@keyframes magic-glow-pulse {
+  0%,
+  100% {
+    filter: brightness(0.85);
+  }
+  50% {
+    filter: brightness(1.2);
+  }
+}

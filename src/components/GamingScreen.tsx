@@ -71,18 +71,27 @@ function GameViewer({ game, onClose }: { game: Game; onClose: () => void }) {
   const next = () => setIndex((i) => (i + 1) % count);
   const prev = () => setIndex((i) => (i - 1 + count) % count);
 
-  // Left and right arrow keys also navigate while the viewer is open.
+  // Keyboard while the viewer is open: left/right flip through photos,
+  // Escape closes the viewer (and back to the grid).
   useEffect(() => {
-    if (count < 2) return;
-
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        // Handled here, so the room doesn't ALSO treat this Escape as
+        // "step away from the monitor". (Capture phase + preventDefault.)
+        e.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (count < 2) return;
       if (e.key === "ArrowRight") setIndex((i) => (i + 1) % count);
       if (e.key === "ArrowLeft") setIndex((i) => (i - 1 + count) % count);
     };
 
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [count]);
+    // Capture phase: runs before the room's own Escape handler.
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [count, onClose]);
 
   return (
     <div className="gaming-viewer">

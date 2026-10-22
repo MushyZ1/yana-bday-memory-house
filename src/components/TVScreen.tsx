@@ -87,6 +87,39 @@ export default function TVScreen({ isOpen, onClose }: TVScreenProps) {
     };
   }, []);
 
+  // Keyboard while the TV is open: left/right switch video, Space pauses/plays.
+  // (Escape to leave the TV is handled by the room in InteractionSystem.)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "ArrowRight") {
+        setVideoIndex((current) => (current + 1) % videos.length);
+      } else if (event.key === "ArrowLeft") {
+        setVideoIndex((current) => (current - 1 + videos.length) % videos.length);
+      } else if (event.key === " ") {
+        event.preventDefault(); // don't also "click" a focused button
+
+        const video = videoRef.current;
+        if (!video) return;
+
+        if (video.paused) {
+          video.play().then(
+            () => useStore.getState().setVideoPlaying(true),
+            () => useStore.getState().setVideoPlaying(false),
+          );
+        } else {
+          video.pause();
+          // Paused on purpose, so let the music come back.
+          useStore.getState().setVideoPlaying(false);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen]);
+
   function nextVideo() {
     setVideoIndex((current) => (current + 1) % videos.length);
   }
@@ -139,49 +172,55 @@ export default function TVScreen({ isOpen, onClose }: TVScreenProps) {
         }}
       />
 
-      <div
-        style={{
-          position: "absolute",
-          left: 12,
-          bottom: 10,
-          color: "white",
-          fontSize: 12,
-          fontFamily: "monospace",
-          textShadow: "0 1px 4px black",
-          pointerEvents: "none",
-          opacity: 0.8,
-          zIndex: 1,
-        }}
-      >
-        {currentVideo.name} · {videoIndex + 1}/{videos.length}
-      </div>
+      {/* The title and close button only show while you're at the TV, so the
+          screen looks like a plain paused video when you step away. */}
+      {isOpen && (
+        <>
+          <div
+            style={{
+              position: "absolute",
+              left: 12,
+              bottom: 10,
+              color: "white",
+              fontSize: 12,
+              fontFamily: "monospace",
+              textShadow: "0 1px 4px black",
+              pointerEvents: "none",
+              opacity: 0.8,
+              zIndex: 1,
+            }}
+          >
+            {currentVideo.name} · {videoIndex + 1}/{videos.length}
+          </div>
 
-      <button
-        type="button"
-        data-object-ui
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={(event) => {
-          event.stopPropagation();
-          handleClose();
-        }}
-        style={{
-          position: "absolute",
-          top: 10,
-          right: 10,
-          zIndex: 2,
-          width: 28,
-          height: 28,
-          border: "1px solid #aaa",
-          borderRadius: 3,
-          background: "rgba(20,20,20,0.8)",
-          color: "white",
-          cursor: "pointer",
-          fontSize: 18,
-          lineHeight: "20px",
-        }}
-      >
-        ×
-      </button>
+          <button
+            type="button"
+            data-object-ui
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleClose();
+            }}
+            style={{
+              position: "absolute",
+              top: 10,
+              right: 10,
+              zIndex: 2,
+              width: 28,
+              height: 28,
+              border: "1px solid #aaa",
+              borderRadius: 3,
+              background: "rgba(20,20,20,0.8)",
+              color: "white",
+              cursor: "pointer",
+              fontSize: 18,
+              lineHeight: "20px",
+            }}
+          >
+            ×
+          </button>
+        </>
+      )}
     </div>
   );
 }

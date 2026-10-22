@@ -1,10 +1,30 @@
-import { useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
+
+import { magic } from "./magic";
 
 type SunsetLightingProps = {
   onSunChange: (sun: THREE.Mesh | null) => void;
 };
+
+// ============================================
+// MAGIC COLORS
+// While our favourite song plays (see MagicMoment), the lights ease from their
+// normal sunset colors toward these richer, golden ones.
+// ============================================
+
+const SUN_COLOR = new THREE.Color("#ffad59");
+const SUN_COLOR_MAGIC = new THREE.Color("#ffcf6b");
+
+const AMBIENT_COLOR = new THREE.Color("#ffc080");
+const AMBIENT_COLOR_MAGIC = new THREE.Color("#ffdc90");
+
+const BEAM_COLOR = new THREE.Color("#ffbd70");
+const BEAM_COLOR_MAGIC = new THREE.Color("#ffd884");
+
+const DUST_COLOR = new THREE.Color("#ffe0a3");
+const DUST_COLOR_MAGIC = new THREE.Color("#fff1b8");
 
 // ============================================
 // SUN SETTINGS
@@ -33,10 +53,48 @@ export default function SunsetLighting({ onSunChange }: SunsetLightingProps) {
     return target;
   }, []);
 
+  const sunLightRef = useRef<THREE.DirectionalLight>(null);
+  const ambientRef = useRef<THREE.AmbientLight>(null);
+  const sunMeshRef = useRef<THREE.Mesh | null>(null);
+
+  // Keeps our own reference to the sun ball AND tells House about it.
+  // (useCallback keeps this the same function between renders, so React
+  // doesn't keep detaching and re-attaching the ref.)
+  const setSunMesh = useCallback(
+    (mesh: THREE.Mesh | null) => {
+      sunMeshRef.current = mesh;
+      onSunChange(mesh);
+    },
+    [onSunChange],
+  );
+
+  // Our favourite song: richer gold light, a gentle shimmer, a bigger sun.
+  // At magic.amount = 0 everything below equals the normal sunset values.
+  useFrame((state) => {
+    const amount = magic.amount;
+    const t = state.clock.elapsedTime;
+
+    const sunLight = sunLightRef.current;
+    if (sunLight) {
+      sunLight.color.copy(SUN_COLOR).lerp(SUN_COLOR_MAGIC, amount);
+      sunLight.intensity = 8 + amount * (2 + 0.6 * Math.sin(t * 1.4));
+    }
+
+    const ambient = ambientRef.current;
+    if (ambient) {
+      ambient.color.copy(AMBIENT_COLOR).lerp(AMBIENT_COLOR_MAGIC, amount);
+      ambient.intensity = 0.5 + amount * (0.3 + 0.05 * Math.sin(t * 1.1));
+    }
+
+    // A bigger, brighter sun ball makes the god rays stronger too.
+    sunMeshRef.current?.scale.setScalar(0.35 * (1 + 0.6 * amount));
+  });
+
   return (
     <>
       {/* Warm directional sunlight */}
       <directionalLight
+        ref={sunLightRef}
         color="#ffad59"
         intensity={8}
         position={SUN_POSITION}
@@ -49,10 +107,10 @@ export default function SunsetLighting({ onSunChange }: SunsetLightingProps) {
       <primitive object={sunTarget} />
 
       {/* Warm sunset ambience */}
-      <ambientLight color="#ffc080" intensity={0.5} />
+      <ambientLight ref={ambientRef} color="#ffc080" intensity={0.5} />
 
       {/* Bright sun source for GodRays */}
-      <mesh ref={onSunChange} position={SUN_POSITION} scale={0.35}>
+      <mesh ref={setSunMesh} position={SUN_POSITION} scale={0.35}>
         <sphereGeometry args={[1, 32, 32]} />
 
         <meshBasicMaterial color="#fff3d5" toneMapped={false} />
@@ -106,11 +164,29 @@ function SunBeam() {
     [length],
   );
 
+  const materialRef = useRef<THREE.ShaderMaterial>(null);
+
+  // Our favourite song: the beam glows brighter and more golden.
+  useFrame((state) => {
+    const material = materialRef.current;
+    if (!material) return;
+
+    const amount = magic.amount;
+    const t = state.clock.elapsedTime;
+
+    material.uniforms.uColor.value
+      .copy(BEAM_COLOR)
+      .lerp(BEAM_COLOR_MAGIC, amount);
+    material.uniforms.uOpacity.value =
+      0.13 + amount * (0.11 + 0.025 * Math.sin(t * 1.3));
+  });
+
   return (
     <mesh position={position} quaternion={quaternion} frustumCulled={false}>
       <cylinderGeometry args={[0.01, 2.4, length, 64, 1, true]} />
 
       <shaderMaterial
+        ref={materialRef}
         transparent
         depthWrite={false}
         side={THREE.DoubleSide}
@@ -230,9 +306,13 @@ function DustParticles() {
       uColor: { value: new THREE.Color("#ffe0a3") },
       uOpacity: { value: 0.65 },
       uSize: { value: 2.5 },
+      uTime: { value: 0 },
+      uMagic: { value: 0 },
     }),
     [],
   );
+
+  const materialRef = useRef<THREE.ShaderMaterial>(null);
 
   useFrame((state, delta) => {
     if (!pointsRef.current) return;
@@ -299,6 +379,21 @@ function DustParticles() {
     }
 
     attribute.needsUpdate = true;
+
+    // Our favourite song: the dust turns golden, brighter and bigger, and
+    // each speck twinkles. At magic.amount = 0 these are the normal values.
+    const material = materialRef.current;
+
+    if (material) {
+      const amount = magic.amount;
+      const u = material.uniforms;
+
+      u.uTime.value = time;
+      u.uMagic.value = amount;
+      u.uColor.value.copy(DUST_COLOR).lerp(DUST_COLOR_MAGIC, amount);
+      u.uOpacity.value = 0.65 + 0.35 * amount;
+      u.uSize.value = 2.5 + 1.1 * amount;
+    }
   });
 
   return (
@@ -313,9 +408,15 @@ function DustParticles() {
           attach="attributes-size"
           args={[particleData.sizes, 1]}
         />
+
+        <bufferAttribute
+          attach="attributes-phase"
+          args={[particleData.phases, 1]}
+        />
       </bufferGeometry>
 
       <shaderMaterial
+        ref={materialRef}
         transparent
         depthWrite={false}
         blending={THREE.AdditiveBlending}
@@ -324,10 +425,14 @@ function DustParticles() {
           uniform float uSize;
 
           attribute float size;
+          attribute float phase;
 
           varying float vAlpha;
+          varying float vPhase;
 
           void main() {
+            vPhase = phase;
+
             vec4 mvPosition =
               modelViewMatrix *
               vec4(position, 1.0);
@@ -349,8 +454,11 @@ function DustParticles() {
         fragmentShader={`
           uniform vec3 uColor;
           uniform float uOpacity;
+          uniform float uTime;
+          uniform float uMagic;
 
           varying float vAlpha;
+          varying float vPhase;
 
           void main() {
             vec2 uv =
@@ -364,9 +472,16 @@ function DustParticles() {
 
             if (alpha < 0.02) discard;
 
+            // Twinkle: during our song every speck pulses on its own rhythm.
+            float twinkle = mix(
+              1.0,
+              0.4 + 0.6 * sin(uTime * 2.6 + vPhase * 6.2831),
+              uMagic
+            );
+
             gl_FragColor = vec4(
               uColor,
-              alpha * uOpacity * vAlpha
+              alpha * uOpacity * vAlpha * twinkle
             );
           }
         `}

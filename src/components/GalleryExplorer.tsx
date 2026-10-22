@@ -12,13 +12,17 @@ type GalleryItem = {
 
 type GalleryExplorerProps = {
   hasOpened: boolean;
+  isMinimized: boolean;
   images: GalleryItem[];
+  onMinimize: () => void;
   onClose: () => void;
 };
 
 export default function GalleryExplorer({
   hasOpened,
+  isMinimized,
   images,
+  onMinimize,
   onClose,
 }: GalleryExplorerProps) {
   const [selected, setSelected] = useState<number | null>(null);
@@ -80,15 +84,21 @@ export default function GalleryExplorer({
         return;
       }
 
-      if (event.key === "Escape") closeViewer();
+      if (event.key === "Escape") {
+        // Handled here, so the room doesn't ALSO treat this Escape as
+        // "step away from the laptop". (Capture phase + preventDefault.)
+        event.preventDefault();
+        closeViewer();
+      }
       if (event.key === "ArrowRight") navigate(1);
       if (event.key === "ArrowLeft") navigate(-1);
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    // Capture phase: runs before the room's own Escape handler.
+    window.addEventListener("keydown", handleKeyDown, true);
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown, true);
     };
   }, [selected, images.length]);
 
@@ -118,7 +128,9 @@ export default function GalleryExplorer({
     <>
       {/* Windows XP Explorer window */}
       <div
-        className={`xp-window ${isMaximized ? "is-maximized" : ""}`}
+        className={`xp-window ${isMaximized ? "is-maximized" : ""} ${
+          isMinimized ? "is-minimized" : ""
+        }`}
         id="gallery-folder"
       >
         <div className="xp-titlebar">
@@ -131,8 +143,13 @@ export default function GalleryExplorer({
             <button
               type="button"
               title="Minimize"
+              aria-label="Minimize window"
               onClick={() => {
-                // Add minimize functionality here if needed.
+                // Close any open picture/video first (this also stops video
+                // sound and lets the music resume), then hide the window.
+                // Click the My Pictures desktop icon to bring it back.
+                closeViewer();
+                onMinimize();
               }}
             >
               _

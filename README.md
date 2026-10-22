@@ -1,75 +1,54 @@
-# React + TypeScript + Vite
+# Our House of Memories
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Happy birthday, Yana.
 
-Currently, two official plugins are available:
+This is a little house I built for you. It's a room you can walk around in, full of the stuff that makes up us: our photos, our videos, the games we play, the songs that are ours, and a diary that remembers every day worth remembering. None of it is perfect, and I loved making all of it.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Take your time. Look around. Click on everything.
 
-## React Compiler
+## What's in the room
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **The laptop.** An old Windows XP desktop with a *My Pictures* folder. All our photos and videos live in there.
+- **The gaming monitor.** Every game we've played together, with screenshots from the good ones.
+- **The TV.** Edits I made, playing one after another.
+- **The diary.** Our story, page by page, from the very beginning.
+- **The music player.** Our songs. Click it to change the song.
+- **The polaroids and photos on the walls.** Pick them up and have a closer look.
+- **The sunset coming through the window.** Because it felt right.
 
-## Expanding the ESLint configuration
+## How to explore
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Do this | To get this |
+| --- | --- |
+| Move the mouse | Look around |
+| Click something that glows | Interact with it |
+| Click a polaroid or photo | Hold it (click again to put it back) |
+| `Esc` | Step back from the laptop, monitor or TV |
+| `←` `→` | Flip through photos, videos or diary pages |
+| `Space` (at the TV) | Pause or play |
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+The room also whispers a little hint the first time you try something new.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## For the curious (how it's built)
 
+React, TypeScript, Vite, and Three.js (through react-three-fiber). Zustand keeps track of what's open, and Howler plays the music.
+
+```bash
+npm install
+npm run dev      # start the room locally
+npm run build    # make a production build
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+The big photo, video and screenshot files are not stored in git (see `.gitignore`), so copy them into `public/media` before running it.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Easy places to add more memories:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- `src/data/diaryEntries.ts` for diary pages
+- `src/data/tracks.ts` for songs
+- `src/data/games.ts` for the games on the monitor
+- `src/data/galleryData.ts` for laptop photos and videos
+- `src/components/TVScreen.tsx` for the TV clips
 
-```
+With all my love. ❤️

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { SyntheticEvent } from "react";
+import { useStore } from "../state/store";
 
 type GalleryItem = {
   id: number | string;
@@ -25,6 +26,8 @@ export default function GalleryExplorer({
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+
+  const setVideoPlaying = useStore((s) => s.setVideoPlaying);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -98,6 +101,12 @@ export default function GalleryExplorer({
     setPlaying(false);
     video.load();
   }, [selected]);
+
+  // Safety net: whenever the viewer changes item or closes, tell the music
+  // player that no video is playing, so the music can never stay paused by mistake.
+  useEffect(() => {
+    return () => setVideoPlaying(false);
+  }, [selected, setVideoPlaying]);
 
   if (!hasOpened) return null;
 
@@ -334,9 +343,18 @@ export default function GalleryExplorer({
                   controls
                   playsInline
                   preload="metadata"
-                  onPlay={() => setPlaying(true)}
-                  onPause={() => setPlaying(false)}
-                  onEnded={() => setPlaying(false)}
+                  onPlay={() => {
+                    setPlaying(true);
+                    setVideoPlaying(true); // pauses the background music
+                  }}
+                  onPause={() => {
+                    setPlaying(false);
+                    setVideoPlaying(false); // music resumes
+                  }}
+                  onEnded={() => {
+                    setPlaying(false);
+                    setVideoPlaying(false);
+                  }}
                   onVolumeChange={handleVolumeChange}
                 >
                   Your browser cannot play this video format.

@@ -1,19 +1,31 @@
 import { useRef, useState } from "react";
 import * as THREE from "three";
+
 import { Canvas } from "@react-three/fiber";
 import { PointerLockControls } from "@react-three/drei";
 import type { PointerLockControls as PointerLockControlsImpl } from "three-stdlib";
-import { EffectComposer, Outline } from "@react-three/postprocessing";
+
+import { EffectComposer, Outline, GodRays } from "@react-three/postprocessing";
 
 import Room from "./Room";
 import InteractionSystem from "./InteractionSystem";
+import SunsetLighting from "./SunsetLighting";
 
 export default function House() {
   const [meshesToOutline, setMeshesToOutline] = useState<THREE.Object3D[]>([]);
+
+  const [sun, setSun] = useState<THREE.Mesh | null>(null);
+
   const controlsRef = useRef<PointerLockControlsImpl | null>(null);
 
   return (
-    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        position: "relative",
+      }}
+    >
       <Canvas
         shadows
         camera={{
@@ -25,7 +37,8 @@ export default function House() {
       >
         <PointerLockControls ref={controlsRef} />
 
-        <ambientLight intensity={0.6} />
+        {/* Sunset lighting, sunbeam and dust */}
+        <SunsetLighting onSunChange={setSun} />
 
         <Room />
 
@@ -41,9 +54,23 @@ export default function House() {
             visibleEdgeColor={0xffffff}
             hiddenEdgeColor={0x444444}
           />
+
+          {sun && (
+            <GodRays
+              sun={sun}
+              samples={80}
+              density={0.96}
+              decay={0.94}
+              weight={0.8}
+              exposure={0.65}
+              clampMax={1}
+              blur
+            />
+          )}
         </EffectComposer>
       </Canvas>
 
+      {/* Crosshair */}
       <div
         aria-hidden="true"
         style={{

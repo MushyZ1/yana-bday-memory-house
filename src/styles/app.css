@@ -568,3 +568,541 @@ body,
   min-height: 0;
   overflow: auto;
 }
+
+/* ---- Gaming monitor screen (append to the bottom of src/styles/app.css) ---- */
+
+#gaming-screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 32px 40px 28px;
+  background: #0d1117;
+  color: #e6edf3;
+  font-family: "Inter", system-ui, sans-serif;
+  user-select: none;
+}
+
+.gaming-title {
+  margin-bottom: 22px;
+  font-size: 44px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.gaming-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.gaming-tile {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  aspect-ratio: 16 / 10;
+  padding: 14px 16px;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 40%);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.gaming-tile:hover {
+  transform: translateY(-3px);
+}
+
+.gaming-tile img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* dark strip at the bottom so the name stays readable on any thumbnail */
+.gaming-tile::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 60%;
+  background: linear-gradient(transparent, rgb(0 0 0 / 75%));
+  pointer-events: none;
+}
+
+.gaming-tile-name {
+  position: relative;
+  z-index: 1;
+  font-size: 30px;
+  font-weight: 600;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 80%);
+}
+
+.gaming-play {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  padding: 8px 20px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 92%);
+  color: #111;
+  font-size: 22px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.gaming-play:hover {
+  background: #fff;
+}
+
+.gaming-more {
+  margin-top: auto;
+  text-align: center;
+  font-size: 34px;
+  letter-spacing: 0.08em;
+  color: #9aa4af;
+}
+
+/* ---- full-screen viewer, drawn on top of the grid ---- */
+
+.gaming-viewer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  padding: 26px 36px 32px;
+  background: #0d1117;
+}
+
+.gaming-viewer-header {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 16px;
+}
+
+.gaming-viewer-title {
+  font-size: 40px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.gaming-viewer-count {
+  color: #9aa4af;
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gaming-close {
+  margin-left: auto;
+  width: 68px;
+  height: 68px;
+  border: 2px solid rgb(255 255 255 / 30%);
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 32px;
+  cursor: pointer;
+}
+
+.gaming-close:hover {
+  background: rgb(255 255 255 / 12%);
+}
+
+.gaming-viewer-stage {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.gaming-viewer-stage img {
+  flex: 1;
+  min-width: 0;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 10px;
+}
+
+.gaming-arrow {
+  flex-shrink: 0;
+  width: 88px;
+  height: 88px;
+  border: 2px solid rgb(255 255 255 / 30%);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 6%);
+  color: inherit;
+  font-size: 56px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.gaming-arrow:hover {
+  background: rgb(255 255 255 / 16%);
+}
+
+.gaming-empty {
+  margin: auto;
+  font-size: 34px;
+  color: #9aa4af;
+}
+
+.diary-backdrop {
+  /* Page size: as tall as fits the window, never wider than 44% of it. */
+  --page-w: min(44vw, calc(74vh * 0.74), 440px);
+  --page-h: calc(var(--page-w) / 0.74);
+  --paper: #f4e9d2;
+  --ink: #3b2a1a;
+
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgb(10 6 3 / 0%);
+  transition: background 0.7s ease;
+}
+
+.diary-backdrop.is-open {
+  background: rgb(10 6 3 / 66%);
+}
+
+.diary-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+/* ---- the book ---- */
+
+.diary-book {
+  position: relative;
+  width: calc(var(--page-w) * 2);
+  height: var(--page-h);
+  perspective: 2400px;
+  /* closed: shifted left so the cover (the right half) sits in the middle of the screen */
+  transform: translateX(calc(var(--page-w) * -0.5));
+  transition: transform 1s cubic-bezier(0.5, 0, 0.2, 1);
+}
+
+.diary-book.is-open {
+  transform: translateX(0);
+}
+
+/* dark leather board behind the pages, appears once the book is open */
+.diary-book::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  z-index: -1;
+  border-radius: 12px;
+  background: #4a2c1a;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 55%);
+  opacity: 0;
+  transition: opacity 0.3s ease 0.5s;
+}
+
+.diary-book.is-open::before {
+  opacity: 1;
+}
+
+.diary-page {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  width: var(--page-w);
+  height: 100%;
+}
+
+.diary-page--left {
+  left: 0;
+  /* hidden while closed; appears when the cover has swung past halfway */
+  opacity: 0;
+  transition: opacity 0s linear 0.5s;
+}
+
+.diary-book.is-open .diary-page--left {
+  opacity: 1;
+}
+
+.diary-page--right {
+  left: var(--page-w);
+}
+
+/* ---- paper ---- */
+
+.diary-paper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 9% 10% 12%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  background: linear-gradient(135deg, #f7eedb, var(--paper));
+  color: var(--ink);
+  font-family: "Cormorant Garamond", Georgia, serif;
+}
+
+.diary-paper::-webkit-scrollbar {
+  display: none;
+}
+
+.diary-paper--left {
+  border-radius: 6px 0 0 6px;
+  box-shadow: inset -22px 0 24px -20px rgb(60 35 15 / 45%);
+}
+
+.diary-paper--right {
+  border-radius: 0 6px 6px 0;
+  box-shadow: inset 22px 0 24px -20px rgb(60 35 15 / 45%);
+}
+
+.diary-date {
+  margin-bottom: 0.5rem;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8a5a3b;
+}
+
+.diary-entry-title {
+  margin-bottom: 1rem;
+  font-size: 1.85rem;
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.diary-text {
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  line-height: 1.5;
+}
+
+.diary-pageno {
+  position: absolute;
+  bottom: 5%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.95rem;
+  color: #8a7660;
+}
+
+/* photos and screenshots, taped on like polaroids */
+.diary-photos {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 8%;
+}
+
+.diary-photo {
+  padding: 8px 8px 6px;
+  background: #fff;
+  box-shadow: 0 3px 10px rgb(0 0 0 / 28%);
+}
+
+.diary-photo img {
+  display: block;
+  width: 100%;
+}
+
+.diary-photo figcaption {
+  padding-top: 6px;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.diary-photo.tilt-0 {
+  transform: rotate(-1.5deg);
+}
+.diary-photo.tilt-1 {
+  transform: rotate(1.2deg);
+}
+.diary-photo.tilt-2 {
+  transform: rotate(-0.6deg);
+}
+
+.diary-photo-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 140px;
+  border: 2px dashed #b9a688;
+  border-radius: 6px;
+  color: #a08c70;
+  font-size: 1.1rem;
+  font-style: italic;
+}
+
+/* ---- cover ---- */
+
+.diary-cover {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 5;
+  width: 50%;
+  height: 100%;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  /* swing open; drop behind the pages when it is edge-on (halfway) */
+  transition:
+    transform 1s cubic-bezier(0.5, 0, 0.2, 1),
+    z-index 0s linear 0.5s;
+}
+
+.diary-book.is-open .diary-cover {
+  z-index: 0;
+  transform: rotateY(-180deg);
+}
+
+.diary-cover-front,
+.diary-cover-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+
+.diary-cover-front {
+  display: grid;
+  place-items: center;
+  border-radius: 0 10px 10px 0;
+  background: linear-gradient(135deg, #6b3e26, #4a2c1a);
+  box-shadow:
+    inset 0 0 0 10px rgb(0 0 0 / 14%),
+    0 18px 50px rgb(0 0 0 / 50%);
+}
+
+.diary-cover-front span {
+  padding: 0.9rem 1.8rem;
+  border: 1px solid rgb(244 233 210 / 55%);
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(1.6rem, 3vw, 2.6rem);
+  letter-spacing: 0.08em;
+  color: #f4e9d2;
+}
+
+.diary-cover-back {
+  transform: rotateY(180deg);
+  border-radius: 10px 0 0 10px;
+  background: #d9c9a6;
+}
+
+/* ---- the turning page ---- */
+
+.diary-leaf {
+  position: absolute;
+  top: 0;
+  z-index: 3;
+  width: var(--page-w);
+  height: 100%;
+  transform-style: preserve-3d;
+}
+
+.diary-leaf--next {
+  left: 50%;
+  transform-origin: left center;
+  animation: leaf-next 0.8s ease-in-out forwards;
+}
+
+.diary-leaf--prev {
+  left: 0;
+  transform-origin: right center;
+  animation: leaf-prev 0.8s ease-in-out forwards;
+}
+
+.diary-leaf-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+
+.diary-leaf-face--back {
+  transform: rotateY(180deg);
+}
+
+@keyframes leaf-next {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(-180deg);
+  }
+}
+
+@keyframes leaf-prev {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(180deg);
+  }
+}
+
+/* ---- controls ---- */
+
+.diary-nav {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  color: #f4e9d2;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 0.95rem;
+  opacity: 0;
+  transition: opacity 0.4s ease 0.8s;
+}
+
+.diary-backdrop.is-open .diary-nav {
+  opacity: 1;
+}
+
+.diary-nav button {
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgb(244 233 210 / 45%);
+  border-radius: 50%;
+  background: rgb(0 0 0 / 25%);
+  color: inherit;
+  font-size: 1.7rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.diary-nav button:hover:not(:disabled) {
+  background: rgb(244 233 210 / 18%);
+}
+
+.diary-nav button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.diary-hint {
+  position: absolute;
+  bottom: 18px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: rgb(244 233 210 / 55%);
+  opacity: 0;
+  transition: opacity 0.4s ease 1s;
+  pointer-events: none;
+}
+
+.diary-backdrop.is-open .diary-hint {
+  opacity: 1;
+}

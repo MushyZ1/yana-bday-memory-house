@@ -5,6 +5,7 @@ import "@fontsource/inter/400.css";
 import "./styles/index.css";
 import "./styles/app.css";
 import App from "./App.tsx";
+import "./audio/audioManager";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

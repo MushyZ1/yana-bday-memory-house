@@ -26,95 +26,97 @@ const videoExtensions = [
   ".wmv",
 ];
 
-// File extensions for all numbered files in public/media/gallery
+// One table matching public/media/gallery:
+// [first number, last number, extension].
+// Every number from 1 to the last number must be covered exactly once.
+const fileRanges: [number, number, string][] = [
+  [1, 4, ".jpg"],
+  [5, 12, ".mp4"],
+  [13, 65, ".jpg"],
+  [66, 66, ".mp4"],
+  [67, 67, ".jpeg"],
+  [68, 68, ".mp4"],
+  [69, 78, ".jpg"],
+  [79, 79, ".mp4"],
+  [80, 81, ".jpg"],
+  [82, 87, ".mp4"],
+  [88, 90, ".jpg"],
+  [91, 92, ".mp4"],
+  [93, 111, ".jpg"],
+  [112, 113, ".mp4"],
+  [114, 121, ".jpg"],
+  [122, 122, ".mp4"],
+  [123, 126, ".jpg"],
+  [127, 127, ".mp4"],
+  [128, 129, ".jpg"],
+  [130, 130, ".mp4"],
+  [131, 131, ".jpg"],
+  [132, 132, ".mp4"],
+  [133, 216, ".jpg"],
+  [217, 221, ".mp4"],
+  [222, 228, ".jpg"],
+  [229, 232, ".mp4"],
+  [233, 258, ".png"],
+  [259, 263, ".mkv"],
+  [264, 274, ".mp4"],
+];
+
+// Build a lookup: file number -> extension.
 const extensionByNumber: Record<number, string> = {};
 
-function addRange(extension: string, start: number, end: number) {
+for (const [start, end, extension] of fileRanges) {
+  if (start < 1 || end < start) {
+    throw new Error(`[galleryData] Invalid file range: ${start}-${end}`);
+  }
+
   for (let i = start; i <= end; i++) {
+    if (extensionByNumber[i]) {
+      throw new Error(`[galleryData] Duplicate file number: ${i}`);
+    }
+
     extensionByNumber[i] = extension;
   }
 }
 
-// JPG files
-[
-  [1, 4],
-  [13, 65],
-  [69, 78],
-  [80, 81],
-  [88, 90],
-  [93, 111],
-  [114, 121],
-  [123, 126],
-  [128, 129],
-  [131, 131],
-  [133, 216],
-  [222, 228],
-].forEach(([start, end]) => addRange(".jpg", start, end));
+const totalFiles = Math.max(...fileRanges.map(([, end]) => end));
 
-// JPEG files
-addRange(".jpeg", 67, 67);
-addRange(".mp4", 267, 267);
+// Generate gallery data.
+const galleryData: GalleryItem[] = Array.from(
+  { length: totalFiles },
+  (_, index): GalleryItem | null => {
+    const id = index + 1;
+    const extension = extensionByNumber[id];
 
-// MP4 files
-[
-  [5, 12],
-  [66, 66],
-  [68, 68],
-  [79, 79],
-  [82, 87],
-  [91, 92],
-  [112, 113],
-  [122, 122],
-  [127, 127],
-  [130, 130],
-  [132, 132],
-  [217, 221],
-  [229, 232],
-  [264, 266],
-  [268, 268],
-].forEach(([start, end]) => addRange(".mp4", start, end));
+    // Don't silently skip a missing number.
+    if (!extension) {
+      console.warn(`[galleryData] No extension set for file number ${id}`);
+      return null;
+    }
 
-// PNG files
-addRange(".png", 233, 258);
+    const filename = `${String(id).padStart(3, "0")}${extension}`;
+    const src = `/media/gallery/${filename}`;
 
-// MKV files
-addRange(".mkv", 259, 263);
+    let type: GalleryItem["type"];
 
-// Generate all numbered filenames
-const mediaFiles = Array.from({ length: 268 }, (_, index) => {
-  const id = index + 1;
-  const number = String(id).padStart(3, "0");
-  const extension = extensionByNumber[id];
+    if (imageExtensions.includes(extension)) {
+      type = "image";
+    } else if (videoExtensions.includes(extension)) {
+      type = "video";
+    } else {
+      console.warn(
+        `[galleryData] Unsupported extension "${extension}" for ${filename}`,
+      );
+      return null;
+    }
 
-  return `${number}${extension}`;
-});
-
-// Generate gallery data
-const galleryData: GalleryItem[] = mediaFiles.flatMap((filename) => {
-  const extension = filename.slice(filename.lastIndexOf(".")).toLowerCase();
-
-  let type: GalleryItem["type"];
-
-  if (imageExtensions.includes(extension)) {
-    type = "image";
-  } else if (videoExtensions.includes(extension)) {
-    type = "video";
-  } else {
-    return [];
-  }
-
-  const id = Number(filename.slice(0, 3));
-  const src = `/media/gallery/${filename}`;
-
-  return [
-    {
+    return {
       id,
       name: filename,
       type,
       src,
       thumbnail: src,
-    },
-  ];
-});
+    };
+  },
+).filter((item): item is GalleryItem => item !== null);
 
 export default galleryData;

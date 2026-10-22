@@ -1,7 +1,13 @@
+import { useEffect } from "react";
 import { Html, useGLTF } from "@react-three/drei";
 import { createPortal } from "@react-three/fiber";
 import * as THREE from "three";
+
 import LaptopGallery from "../components/LaptopGallery";
+import GamingScreen from "../components/GamingScreen";
+import TVScreen from "../components/TVScreen";
+
+import { useStore } from "../state/store";
 
 const interactableNames = new Set<string>([
   "Gaming_Monitor",
@@ -63,7 +69,7 @@ const holdRotationCorrections: Record<string, HoldRotation> = {
   ),
 };
 
-function LaptopScreen({ laptop }: { laptop: THREE.Object3D }) {
+function LaptopScreenPortal({ laptop }: { laptop: THREE.Object3D }) {
   return createPortal(
     <Html
       transform
@@ -77,42 +83,132 @@ function LaptopScreen({ laptop }: { laptop: THREE.Object3D }) {
         pointerEvents: "auto",
       }}
     >
-      <LaptopGallery />
+      <div data-object-ui style={{ width: "100%", height: "100%" }}>
+        <LaptopGallery />
+      </div>
     </Html>,
     laptop,
+  );
+}
+
+const MONITOR_SCREEN = {
+  position: [-0.55, 0, 7] as [number, number, number],
+  rotation: [Math.PI / 2, Math.PI, 0] as [number, number, number],
+  distanceFactor: 2,
+};
+
+function MonitorScreenPortal({ monitor }: { monitor: THREE.Object3D }) {
+  return createPortal(
+    <Html
+      transform
+      position={MONITOR_SCREEN.position}
+      rotation={MONITOR_SCREEN.rotation}
+      distanceFactor={MONITOR_SCREEN.distanceFactor}
+      style={{
+        width: "4350px",
+        height: "2620px",
+        overflow: "hidden",
+        pointerEvents: "auto",
+      }}
+    >
+      <div data-object-ui style={{ width: "100%", height: "100%" }}>
+        <GamingScreen />
+      </div>
+    </Html>,
+    monitor,
+  );
+}
+
+function TVVideoScreenPortal({
+  tv,
+  isOpen,
+  onClose,
+}: {
+  tv: THREE.Object3D;
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  return createPortal(
+    <Html
+      transform
+      position={[-12, 52, 28]}
+      rotation={[Math.PI / 2, 0, 0]}
+      distanceFactor={3}
+      style={{
+        width: "11920px",
+        height: "6080px",
+        overflow: "hidden",
+        pointerEvents: isOpen ? "auto" : "none",
+        display: isOpen ? "block" : "none",
+        background: "#000",
+      }}
+    >
+      <div
+        data-object-ui
+        style={{
+          width: "100%",
+          height: "100%",
+        }}
+      >
+        <TVScreen isOpen={isOpen} onClose={onClose} />
+      </div>
+    </Html>,
+    tv,
   );
 }
 
 export default function Room() {
   const { scene } = useGLTF("/models/yana-bday-room-textures.glb");
 
-  scene.traverse((object) => {
-    if (interactableNames.has(object.name)) {
-      object.userData.interactable = true;
-    }
+  const tvOpen = useStore((state) => state.tvOpen);
+  const closeTV = useStore((state) => state.closeTV);
 
-    if (holdableNames.has(object.name)) {
-      object.userData.holdable = true;
-    }
+  useEffect(() => {
+    scene.traverse((object) => {
+      if (interactableNames.has(object.name)) {
+        object.userData.interactable = true;
+      }
 
-    const correction = holdRotationCorrections[object.name];
+      if (holdableNames.has(object.name)) {
+        object.userData.holdable = true;
+      }
 
-    if (correction) {
-      object.userData.holdRotation = correction;
-    }
-  });
+      const correction = holdRotationCorrections[object.name];
+
+      if (correction) {
+        object.userData.holdRotation = correction;
+      }
+    });
+  }, [scene]);
 
   const laptop = scene.getObjectByName("Laptop_Model");
+  const monitor = scene.getObjectByName("Gaming_Monitor");
+  const tv = scene.getObjectByName("TV_Model");
 
-  if (!laptop) {
-    console.warn('Could not find "Laptop_Model" in the GLB model.');
-  }
+  useEffect(() => {
+    if (!laptop) {
+      console.warn('Could not find "Laptop_Model" in the GLB model.');
+    }
+
+    if (!monitor) {
+      console.warn('Could not find "Gaming_Monitor" in the GLB model.');
+    }
+
+    if (!tv) {
+      console.warn('Could not find "TV_Model" in the GLB model.');
+    }
+  }, [laptop, monitor, tv]);
 
   return (
     <>
       <primitive object={scene} scale={1} position={[0, 0, 0]} />
 
-      {laptop && <LaptopScreen laptop={laptop} />}
+      {laptop && <LaptopScreenPortal laptop={laptop} />}
+
+      {monitor && <MonitorScreenPortal monitor={monitor} />}
+
+      {/* Keep the TV mounted so its video and timestamp survive closing. */}
+      {tv && <TVVideoScreenPortal tv={tv} isOpen={tvOpen} onClose={closeTV} />}
     </>
   );
 }

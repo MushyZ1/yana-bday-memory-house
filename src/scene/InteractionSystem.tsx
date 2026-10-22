@@ -2,7 +2,9 @@ import * as THREE from "three";
 import { useCallback, useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import type { PointerLockControls as PointerLockControlsImpl } from "three-stdlib";
+
 import { useObjectFocus, type FocusOptions } from "../hooks/useObjectFocus";
+import { useStore } from "../state/store";
 
 type InteractionSystemProps = {
   onMeshesChange: (meshes: THREE.Object3D[]) => void;
@@ -16,12 +18,30 @@ type SavedTransform = {
   parent: THREE.Object3D;
 };
 
-const pointer = new THREE.Vector2(0, 0);
+type CameraPose = {
+  position: THREE.Vector3;
+  quaternion: THREE.Quaternion;
+};
+
+type CameraMove = {
+  from: CameraPose;
+  to: CameraPose;
+  elapsed: number;
+  duration: number;
+  returning: boolean;
+};
+
+const pointer = new THREE.Vector2();
 
 const defaultHoldCorrection = new THREE.Quaternion().setFromAxisAngle(
   new THREE.Vector3(1, 0, 0),
   -Math.PI / 2,
 );
+
+const pressActions: Record<string, () => void> = {
+  Music_Player: () => useStore.getState().pressPlayer(),
+  Laptop_Diary: () => useStore.getState().openDiary(),
+};
 
 const focusSettings: Record<string, FocusOptions> = {
   Laptop_Model: {
@@ -37,10 +57,14 @@ const focusSettings: Record<string, FocusOptions> = {
     offsetX: 0.5,
     targetOffsetY: 0.1,
   },
-  TV_Model: { distance: 4, height: 0.2 },
-  Music_Player: { distance: 1.2, height: 1, offsetX: 0.15 },
-  Laptop_Diary: { distance: 1.2, height: 0.15, rotationY: 0.1 },
-  default: { distance: 2.2, height: 0.25 },
+  TV_Model: {
+    distance: 4,
+    height: 0.2,
+  },
+  default: {
+    distance: 2.2,
+    height: 0.25,
+  },
 };
 
 function getFocusSettings(object: THREE.Object3D): FocusOptions {
@@ -97,6 +121,13 @@ function isWithinObject(
   return false;
 }
 
+function snapshotCamera(camera: THREE.Camera): CameraPose {
+  return {
+    position: camera.position.clone(),
+    quaternion: camera.quaternion.clone(),
+  };
+}
+
 export default function InteractionSystem({
   onMeshesChange,
   controlsRef,
@@ -106,9 +137,14 @@ export default function InteractionSystem({
   const raycaster = useRef(new THREE.Raycaster());
   const currentTarget = useRef<THREE.Object3D | null>(null);
   const heldTarget = useRef<THREE.Object3D | null>(null);
+  const original = useRef<SavedTransform | null>(null);
+
   const isReturning = useRef(false);
   const wasFocused = useRef(false);
-  const original = useRef<SavedTransform | null>(null);
+
+  const cameraMove = useRef<CameraMove | null>(null);
+  const savedCameraPose = useRef<CameraPose | null>(null);
+  const tvMode = useRef(false);
 
   const targetWorldPosition = useRef(new THREE.Vector3());
   const targetWorldQuaternion = useRef(new THREE.Quaternion());
@@ -127,7 +163,6 @@ export default function InteractionSystem({
       }
 
       const rect = gl.domElement.getBoundingClientRect();
-
       if (!rect.width || !rect.height) return;
 
       pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -141,16 +176,103 @@ export default function InteractionSystem({
     return raycaster.current.intersectObjects(scene.children, true);
   }, [camera, scene]);
 
-  // Keep the ray under the cursor, or at the center while pointer-locked.
+  const animateCameraTo = useCallback(
+    (destination: CameraPose, duration: number, returning: boolean) => {
+      cameraMove.current = {
+        from: snapshotCamera(camera),
+        to: {
+          position: destination.position.clone(),
+          quaternion: destination.quaternion.clone(),
+        },
+        elapsed: 0,
+        duration,
+        returning,
+      };
+    },
+    [camera],
+  );
+
+  const openTV = useCallback(
+    (tv: THREE.Object3D) => {
+      if (tvMode.current) return;
+
+      camera.updateMatrixWorld(true);
+
+      savedCameraPose.current = snapshotCamera(camera);
+      tvMode.current = true;
+
+      const bounds = new THREE.Box3().setFromObject(tv);
+      const center = bounds.getCenter(new THREE.Vector3());
+      const size = bounds.getSize(new THREE.Vector3());
+
+      const currentCameraPosition = camera.getWorldPosition(
+        new THREE.Vector3(),
+      );
+
+      const direction = currentCameraPosition.sub(center);
+      direction.y = 0;
+
+      if (direction.lengthSq() < 0.001) {
+        direction.set(0, 0, 1);
+      }
+
+      direction.normalize();
+
+      // Approach the TV from the side the player is currently on.
+      const distance = Math.max(2.5, Math.min(5, size.z + 2.5));
+      const destination = center
+        .clone()
+        .add(direction.multiplyScalar(distance));
+
+      destination.y = center.y + Math.max(0.1, size.y * 0.08);
+
+      const targetCamera = camera.clone();
+      targetCamera.position.copy(destination);
+      targetCamera.up.set(0, 1, 0);
+      targetCamera.lookAt(center);
+      targetCamera.updateMatrixWorld(true);
+
+      animateCameraTo(
+        {
+          position: destination,
+          quaternion: targetCamera.quaternion,
+        },
+        0.9,
+        false,
+      );
+
+      controlsRef.current?.unlock();
+
+      useStore.getState().openTV();
+    },
+    [camera, controlsRef, animateCameraTo],
+  );
+
+  const closeTV = useCallback(() => {
+    if (!tvMode.current) return;
+
+    tvMode.current = false;
+
+    useStore.getState().closeTV();
+    useStore.getState().setVideoPlaying(false);
+
+    const saved = savedCameraPose.current;
+
+    if (saved) {
+      animateCameraTo(saved, 0.75, true);
+    } else if (!isFocused.current) {
+      controlsRef.current?.lock();
+    }
+  }, [animateCameraTo, controlsRef, isFocused]);
+
+  // Pointer tracking.
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
       updatePointer(event);
     };
 
     const handleLockChange = () => {
-      if (controlsRef.current?.isLocked) {
-        pointer.set(0, 0);
-      }
+      if (controlsRef.current?.isLocked) pointer.set(0, 0);
     };
 
     gl.domElement.addEventListener("pointermove", handlePointerMove);
@@ -162,10 +284,52 @@ export default function InteractionSystem({
     };
   }, [gl, updatePointer, controlsRef]);
 
-  // Pick up holdable objects and return them on the next click.
+  // Unlock controls while diary or TV is open.
+  useEffect(() => {
+    const unsubscribe = useStore.subscribe((state, previous) => {
+      if (
+        state.diaryOpen === previous.diaryOpen &&
+        state.tvOpen === previous.tvOpen
+      ) {
+        return;
+      }
+
+      if (state.diaryOpen || state.tvOpen) {
+        controlsRef.current?.unlock();
+      } else if (!isFocused.current && !tvMode.current) {
+        // The camera animation will relock controls when it finishes.
+        if (!cameraMove.current) controlsRef.current?.lock();
+      }
+    });
+
+    return unsubscribe;
+  }, [controlsRef, isFocused]);
+
+  // If TV is closed by its own UI button, also restore the camera.
+  useEffect(() => {
+    const unsubscribe = useStore.subscribe((state, previous) => {
+      if (!previous.tvOpen || state.tvOpen || !tvMode.current) return;
+
+      tvMode.current = false;
+      useStore.getState().setVideoPlaying(false);
+
+      const saved = savedCameraPose.current;
+
+      if (saved) {
+        animateCameraTo(saved, 0.75, true);
+      }
+    });
+
+    return unsubscribe;
+  }, [animateCameraTo]);
+
+  // Holdable-object pickup and return.
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
+
+      const state = useStore.getState();
+      if (state.diaryOpen || state.tvOpen || tvMode.current) return;
 
       const rect = gl.domElement.getBoundingClientRect();
       const insideCanvas =
@@ -185,11 +349,9 @@ export default function InteractionSystem({
 
       if (isReturning.current || isFocused.current) return;
 
-      const hits = getHits();
-
       let target: THREE.Object3D | null = null;
 
-      for (const hit of hits) {
+      for (const hit of getHits()) {
         target = findHoldable(hit.object);
         if (target) break;
       }
@@ -206,30 +368,35 @@ export default function InteractionSystem({
       heldTarget.current = target;
     };
 
-    // Listen globally so pointer-lock clicks aren't missed by a canvas-only listener.
     document.addEventListener("pointerdown", handlePointerDown);
 
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [gl, updatePointer, getHits, isFocused, controlsRef]);
+  }, [gl, updatePointer, getHits, isFocused]);
 
-  // Focus interactables and exit focus when clicking elsewhere.
+  // Click handling for TV, other interactables, and outside clicks.
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
       const eventTarget = event.target;
 
-      if (
+      const isObjectUI =
         eventTarget instanceof Element &&
-        eventTarget.closest("[data-object-ui]")
-      ) {
+        Boolean(eventTarget.closest("[data-object-ui]"));
+
+      const state = useStore.getState();
+
+      // While the TV is open, any click outside its HTML screen closes it.
+      if (tvMode.current || state.tvOpen) {
+        if (isObjectUI) return;
+        closeTV();
         return;
       }
 
+      if (isObjectUI || state.diaryOpen) return;
       if (heldTarget.current || isReturning.current) return;
 
       const rect = gl.domElement.getBoundingClientRect();
-
       const insideCanvas =
         event.clientX >= rect.left &&
         event.clientX <= rect.right &&
@@ -245,20 +412,34 @@ export default function InteractionSystem({
 
       updatePointer(event);
 
-      const hits = getHits();
       let clickedTarget: THREE.Object3D | null = null;
 
-      for (const hit of hits) {
+      for (const hit of getHits()) {
         clickedTarget = findInteractable(hit.object);
         if (clickedTarget) break;
       }
 
-      if (active) {
-        if (clickedTarget && isWithinObject(clickedTarget, active)) {
-          return;
-        }
+      if (!clickedTarget) {
+        if (active) exitFocus();
+        return;
+      }
 
-        if (clickedTarget && !clickedTarget.userData.holdable) {
+      if (clickedTarget.name === "TV_Model") {
+        openTV(clickedTarget);
+        return;
+      }
+
+      const press = pressActions[clickedTarget.name];
+
+      if (press) {
+        press();
+        return;
+      }
+
+      if (active) {
+        if (isWithinObject(clickedTarget, active)) return;
+
+        if (!clickedTarget.userData.holdable) {
           focusObject(clickedTarget, getFocusSettings(clickedTarget));
           controlsRef.current?.unlock();
           return;
@@ -268,7 +449,7 @@ export default function InteractionSystem({
         return;
       }
 
-      if (clickedTarget && !clickedTarget.userData.holdable) {
+      if (!clickedTarget.userData.holdable) {
         focusObject(clickedTarget, getFocusSettings(clickedTarget));
         controlsRef.current?.unlock();
       }
@@ -287,15 +468,50 @@ export default function InteractionSystem({
     exitFocus,
     focusedObject,
     controlsRef,
+    openTV,
+    closeTV,
   ]);
 
   useFrame((_, delta) => {
-    // Update the outline selection.
-    if (!heldTarget.current && !isReturning.current) {
-      const hits = getHits();
+    // Smooth camera animation to/from the TV.
+    const move = cameraMove.current;
+
+    if (move) {
+      move.elapsed += delta;
+
+      const t = Math.min(move.elapsed / move.duration, 1);
+      const eased = t * t * (3 - 2 * t);
+
+      camera.position.lerpVectors(move.from.position, move.to.position, eased);
+      camera.quaternion.slerpQuaternions(
+        move.from.quaternion,
+        move.to.quaternion,
+        eased,
+      );
+
+      camera.updateMatrixWorld(true);
+
+      if (t >= 1) {
+        camera.position.copy(move.to.position);
+        camera.quaternion.copy(move.to.quaternion);
+        camera.updateMatrixWorld(true);
+        cameraMove.current = null;
+
+        if (move.returning && !isFocused.current) {
+          const state = useStore.getState();
+
+          if (!state.tvOpen && !state.diaryOpen) {
+            controlsRef.current?.lock();
+          }
+        }
+      }
+    }
+
+    // Outline selection.
+    if (!heldTarget.current && !isReturning.current && !tvMode.current) {
       let nextTarget: THREE.Object3D | null = null;
 
-      for (const hit of hits) {
+      for (const hit of getHits()) {
         nextTarget = findInteractable(hit.object);
         if (nextTarget) break;
       }
@@ -306,14 +522,20 @@ export default function InteractionSystem({
       }
     }
 
-    // Relock controls after focus has finished returning.
+    // Relock controls after the normal object-focus animation returns.
     if (isFocused.current) {
       wasFocused.current = true;
     } else if (wasFocused.current && !isAnimating.current) {
-      controlsRef.current?.lock();
+      const state = useStore.getState();
+
+      if (!state.diaryOpen && !state.tvOpen && !tvMode.current) {
+        if (!cameraMove.current) controlsRef.current?.lock();
+      }
+
       wasFocused.current = false;
     }
 
+    // Holdable-object movement.
     const target = heldTarget.current;
     if (!target) return;
 
@@ -349,7 +571,6 @@ export default function InteractionSystem({
       return;
     }
 
-    // Keep the held object in front of the camera.
     camera.updateWorldMatrix(true, false);
 
     targetWorldPosition.current

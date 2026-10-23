@@ -60,7 +60,7 @@ export default function House() {
             selection={meshesToOutline}
             edgeStrength={50}
             visibleEdgeColor={0xffffff}
-            hiddenEdgeColor={0x444444}
+            hiddenEdgeColor={0xff0000}
           />
 
           {sun && (

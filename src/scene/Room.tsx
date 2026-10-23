@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Html, useGLTF } from "@react-three/drei";
 import { createPortal } from "@react-three/fiber";
 import * as THREE from "three";
@@ -7,6 +7,7 @@ import LaptopGallery from "../components/LaptopGallery";
 import GamingScreen from "../components/GamingScreen";
 import TVScreen from "../components/TVScreen";
 
+import { useScreenFade } from "../hooks/useScreenFade";
 import { useStore } from "../state/store";
 import {
   holdableNames,
@@ -42,8 +43,15 @@ const holdRotationCorrections: Record<string, HoldRotation> = {
 };
 
 function LaptopScreenPortal({ laptop }: { laptop: THREE.Object3D }) {
+  // The screen is HTML on top of the 3D canvas, so a held picture would always
+  // be drawn under it. Instead, the screen fades out while a held thing is in
+  // front of it (see useScreenFade).
+  const screenRef = useRef<HTMLDivElement>(null);
+  useScreenFade(screenRef, laptop);
+
   return createPortal(
     <Html
+      ref={screenRef}
       transform
       position={[-0.009, 0.15, -0.276]}
       rotation={[Math.PI / 2, 0, 0]}
@@ -53,6 +61,7 @@ function LaptopScreenPortal({ laptop }: { laptop: THREE.Object3D }) {
         height: "750px",
         overflow: "hidden",
         pointerEvents: "auto",
+        transition: "opacity 0.15s ease",
       }}
     >
       <div data-object-ui style={{ width: "100%", height: "100%" }}>
@@ -70,8 +79,14 @@ const MONITOR_SCREEN = {
 };
 
 function MonitorScreenPortal({ monitor }: { monitor: THREE.Object3D }) {
+  // Fades out while a held picture or sticky note is in front of it (see
+  // useScreenFade and LaptopScreenPortal).
+  const screenRef = useRef<HTMLDivElement>(null);
+  useScreenFade(screenRef, monitor);
+
   return createPortal(
     <Html
+      ref={screenRef}
       transform
       position={MONITOR_SCREEN.position}
       rotation={MONITOR_SCREEN.rotation}
@@ -81,6 +96,7 @@ function MonitorScreenPortal({ monitor }: { monitor: THREE.Object3D }) {
         height: "2620px",
         overflow: "hidden",
         pointerEvents: "auto",
+        transition: "opacity 0.15s ease",
       }}
     >
       <div data-object-ui style={{ width: "100%", height: "100%" }}>
@@ -117,8 +133,14 @@ function TVVideoScreenPortal({
   isOpen: boolean;
   onClose: () => void;
 }) {
+  // Fades out while a held picture or sticky note is in front of it (see
+  // useScreenFade and LaptopScreenPortal).
+  const screenRef = useRef<HTMLDivElement>(null);
+  useScreenFade(screenRef, tv);
+
   return createPortal(
     <Html
+      ref={screenRef}
       transform
       position={TV_SCREEN.position}
       rotation={TV_SCREEN.rotation}
@@ -127,6 +149,7 @@ function TVVideoScreenPortal({
         width: `${TV_SCREEN.width}px`,
         height: `${TV_SCREEN.height}px`,
         overflow: "hidden",
+        transition: "opacity 0.15s ease",
         // Clicks only reach the screen while the TV is open. When it's closed,
         // clicks go through to the 3D room (so you can click the TV again).
         pointerEvents: isOpen ? "auto" : "none",

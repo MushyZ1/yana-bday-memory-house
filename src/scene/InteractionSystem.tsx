@@ -5,6 +5,7 @@ import type { PointerLockControls as PointerLockControlsImpl } from "three-stdli
 
 import { useObjectFocus, type FocusOptions } from "../hooks/useObjectFocus";
 import { useStore } from "../state/store";
+import { held } from "./heldObject";
 
 type InteractionSystemProps = {
   onMeshesChange: (meshes: THREE.Object3D[]) => void;
@@ -467,6 +468,7 @@ export default function InteractionSystem({
       };
 
       heldTarget.current = target;
+      held.object = target; // lets the screens fade out behind it
       useStore
         .getState()
         .showHintOnce("holding", "Click again to put it back");
@@ -705,6 +707,7 @@ export default function InteractionSystem({
         target.updateMatrixWorld(true);
 
         heldTarget.current = null;
+        held.object = null;
         original.current = null;
         isReturning.current = false;
       }

@@ -1211,3 +1211,113 @@ body,
     filter: brightness(1.2);
   }
 }
+
+/* ---- Counter at the side: how many things have been found ---- */
+
+.found-counter {
+  position: fixed;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20; /* above the 3D scene, below the diary (z-index 50) */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 14px;
+  background: rgb(14 10 8 / 72%);
+  color: #fff3e0;
+  font-family: "Inter", system-ui, sans-serif;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 60%);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.found-counter-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.found-counter-count {
+  font-size: 1.35rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.found-counter-total {
+  font-size: 0.9rem;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+/* Everything found: a warm golden glow */
+.found-counter.is-complete {
+  border-color: rgb(255 205 110 / 70%);
+  box-shadow: 0 0 18px rgb(255 190 90 / 45%);
+}
+
+/* ---- The ending: "from me to you" icon on the laptop desktop ---- */
+
+/* Sits under the My Pictures icon and borrows its look. */
+#finale-desktop-icon {
+  position: absolute;
+  top: calc(5% + 92px);
+  left: 3%;
+  z-index: 2;
+  width: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  padding: 6px;
+  background: transparent;
+  color: white;
+  font:
+    12px Tahoma,
+    Arial,
+    sans-serif;
+  text-align: center;
+  text-shadow: 1px 1px 2px black;
+  cursor: pointer;
+  animation: finale-icon-in 0.9s ease-out both;
+}
+
+#finale-desktop-icon:hover {
+  background: rgb(0 80 180 / 35%);
+  outline: 1px dotted white;
+}
+
+.finale-icon-glyph {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  font-size: 30px;
+  line-height: 1;
+  text-shadow: none;
+}
+
+@keyframes finale-icon-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.finale-missing {
+  margin: auto;
+  padding: 24px;
+  color: #fff;
+  font-family: Tahoma, Arial, sans-serif;
+  text-align: center;
+}

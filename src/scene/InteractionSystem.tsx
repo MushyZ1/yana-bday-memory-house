@@ -179,6 +179,12 @@ export default function InteractionSystem({
   const isReturning = useRef(false);
   const wasFocused = useRef(false);
 
+  // What is outlined = whatever you are looking at (hover), plus the laptop
+  // while the ending is waiting for you to open it (see publishOutline).
+  const hoverMeshes = useRef<THREE.Object3D[]>([]);
+  const laptopGlow = useRef(false);
+  const laptopMeshes = useRef<THREE.Mesh[] | null>(null);
+
   const cameraMove = useRef<CameraMove | null>(null);
   const savedCameraPose = useRef<CameraPose | null>(null);
   const tvMode = useRef(false);
@@ -212,6 +218,23 @@ export default function InteractionSystem({
     raycaster.current.setFromCamera(pointer, camera);
     return raycaster.current.intersectObjects(scene.children, true);
   }, [camera, scene]);
+
+  const publishOutline = useCallback(() => {
+    if (!laptopGlow.current) {
+      onMeshesChange(hoverMeshes.current);
+      return;
+    }
+
+    if (!laptopMeshes.current) {
+      laptopMeshes.current = getMeshes(
+        scene.getObjectByName("Laptop_Model") ?? null,
+      );
+    }
+
+    onMeshesChange([
+      ...new Set([...hoverMeshes.current, ...laptopMeshes.current]),
+    ]);
+  }, [onMeshesChange, scene]);
 
   const animateCameraTo = useCallback(
     (destination: CameraPose, duration: number, returning: boolean) => {
@@ -288,6 +311,8 @@ export default function InteractionSystem({
           "Click the screen for the next video · ← → switch · Space pause · Esc to leave",
           7000,
         );
+
+      useStore.getState().markInteracted("TV_Model");
     },
     [camera, controlsRef, animateCameraTo],
   );
@@ -445,6 +470,9 @@ export default function InteractionSystem({
       useStore
         .getState()
         .showHintOnce("holding", "Click again to put it back");
+
+      // After the hint, so the ending's message is never covered by it.
+      useStore.getState().markInteracted(target.name);
     };
 
     document.addEventListener("pointerdown", handlePointerDown);
@@ -512,6 +540,7 @@ export default function InteractionSystem({
 
       if (press) {
         press();
+        useStore.getState().markInteracted(clickedTarget.name);
         return;
       }
 
@@ -522,6 +551,7 @@ export default function InteractionSystem({
           focusObject(clickedTarget, getFocusSettings(clickedTarget));
           controlsRef.current?.unlock();
           showFocusHint(clickedTarget.name);
+          useStore.getState().markInteracted(clickedTarget.name);
           return;
         }
 
@@ -533,6 +563,7 @@ export default function InteractionSystem({
         focusObject(clickedTarget, getFocusSettings(clickedTarget));
         controlsRef.current?.unlock();
         showFocusHint(clickedTarget.name);
+        useStore.getState().markInteracted(clickedTarget.name);
       }
     };
 
@@ -599,7 +630,8 @@ export default function InteractionSystem({
 
       if (nextTarget !== currentTarget.current) {
         currentTarget.current = nextTarget;
-        onMeshesChange(getMeshes(nextTarget));
+        hoverMeshes.current = getMeshes(nextTarget);
+        publishOutline();
 
         // First time you look at something clickable, say what clicking does.
         // (Skipped while the diary covers the screen.)
@@ -617,6 +649,18 @@ export default function InteractionSystem({
           }
         }
       }
+    }
+
+    // Once everything is found, keep the laptop outlined until its "from me
+    // to you" icon has been opened (not while you're stepped up to something,
+    // where an outline would only get in the way).
+    const finale = useStore.getState();
+    const wantLaptopGlow =
+      finale.finaleReady && !finale.finaleOpened && !isFocused.current;
+
+    if (wantLaptopGlow !== laptopGlow.current) {
+      laptopGlow.current = wantLaptopGlow;
+      publishOutline();
     }
 
     // Relock controls after the normal object-focus animation returns.
@@ -670,8 +714,14 @@ export default function InteractionSystem({
 
     camera.updateWorldMatrix(true, false);
 
+    // Most things are held 3 units away; small ones (sticky notes) come closer
+    // so they can be read.
+    const holdDistance =
+      (target.userData.holdDistance as number | undefined) ??
+      distanceFromCamera;
+
     targetWorldPosition.current
-      .set(0, 0, -distanceFromCamera)
+      .set(0, 0, -holdDistance)
       .applyMatrix4(camera.matrixWorld);
 
     camera.getWorldQuaternion(targetWorldQuaternion.current);

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { tracks } from "../data/tracks";
+import { countedNames, INTERACTABLE_TOTAL } from "../data/interactables";
 
 // A little message shown at the bottom of the screen (see Overlay.tsx).
 // `id` changes every time, so showing the same text twice still replays it.
@@ -23,6 +24,17 @@ export type State = {
   // after the song ends). Set by MagicMoment; used to mount the Bloom effect.
   magicVisible: boolean;
 
+  // Which objects have been interacted with so far (by model node name), and
+  // how many of them. Only names in `countedNames` are counted.
+  interacted: Record<string, true>;
+  interactedCount: number;
+
+  // The ending. `finaleReady` turns true (once, for good) when every object
+  // has been interacted with: the chime plays, the laptop is outlined and the
+  // "from me to you" icon appears. `finaleOpened` turns true when it is opened.
+  finaleReady: boolean;
+  finaleOpened: boolean;
+
   hint: Hint | null;
   seenHints: Record<string, boolean>;
 
@@ -34,6 +46,9 @@ export type State = {
   closeDiary: () => void;
   openTV: () => void;
   closeTV: () => void;
+
+  markInteracted: (name: string) => void;
+  openFinale: () => void;
 
   showHint: (text: string, duration?: number) => void;
   // Shows the hint only the first time this `key` is used (per page visit).
@@ -48,6 +63,11 @@ export const useStore = create<State>()((set, get) => ({
   tvOpen: false,
 
   magicVisible: false,
+
+  interacted: {},
+  interactedCount: 0,
+  finaleReady: false,
+  finaleOpened: false,
 
   hint: null,
   seenHints: {},
@@ -80,6 +100,32 @@ export const useStore = create<State>()((set, get) => ({
   openTV: () => set({ tvOpen: true }),
 
   closeTV: () => set({ tvOpen: false }),
+
+  // Safe to call as often as you like: unknown names and repeats are ignored.
+  markInteracted: (name) => {
+    const state = get();
+    if (!countedNames.has(name) || state.interacted[name]) return;
+
+    const interactedCount = state.interactedCount + 1;
+    const justFinished =
+      interactedCount >= INTERACTABLE_TOTAL && !state.finaleReady;
+
+    set({
+      interacted: { ...state.interacted, [name]: true },
+      interactedCount,
+      ...(justFinished ? { finaleReady: true } : {}),
+    });
+
+    if (justFinished) {
+      // The chime is played by audioManager when `finaleReady` flips.
+      get().showHint(
+        "You found everything ♥ Something is waiting for you on the laptop",
+        10000,
+      );
+    }
+  },
+
+  openFinale: () => set({ finaleOpened: true }),
 
   showHint: (text, duration = DEFAULT_HINT_MS) =>
     set({ hint: { id: nextHintId++, text, duration } }),

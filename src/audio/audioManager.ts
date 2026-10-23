@@ -18,7 +18,23 @@ function play(index: number) {
   if (!useStore.getState().videoPlaying) howl.play();
 }
 
+// The chime that plays once, when everything in the room has been found.
+// Drop your sound file at public/audio/chime.mp3. If it is missing, the room
+// just stays quiet at that moment (nothing breaks).
+const CHIME_SRC = "/audio/chime.mp3";
+
+function playChime() {
+  new Howl({
+    src: [CHIME_SRC],
+    volume: 0.8,
+    onloaderror: () => console.warn(`Chime sound not found: ${CHIME_SRC}`),
+  }).play();
+}
+
 useStore.subscribe((state, prev) => {
+  // Everything found: ring the chime (the store only flips this once).
+  if (state.finaleReady && !prev.finaleReady) playChime();
+
   // Music started, or the track changed: (re)start playback.
   if (
     state.musicStarted &&

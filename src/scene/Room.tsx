@@ -8,40 +8,12 @@ import GamingScreen from "../components/GamingScreen";
 import TVScreen from "../components/TVScreen";
 
 import { useStore } from "../state/store";
-
-const interactableNames = new Set<string>([
-  "Gaming_Monitor",
-  "Laptop_Model",
-  "Music_Player",
-  "TV_Model",
-  "Laptop_Diary",
-  "Polaroid_Landscape",
-  "Polaroid_Portrait",
-  ...Array.from({ length: 11 }, (_, i) => `Photo_${i + 1}`),
-  ...Array.from(
-    { length: 38 },
-    (_, i) => `Polaroid_Portrait${String(i + 1).padStart(3, "0")}`,
-  ),
-  ...Array.from(
-    { length: 18 },
-    (_, i) => `Polaroid_Landscape${String(i + 1).padStart(3, "0")}`,
-  ),
-  ...Array.from({ length: 12 }, (_, i) => `Sticky_Var_${i + 1}`),
-]);
-
-const holdableNames = new Set<string>([
-  "Polaroid_Landscape",
-  "Polaroid_Portrait",
-  ...Array.from({ length: 11 }, (_, i) => `Photo_${i + 1}`),
-  ...Array.from(
-    { length: 38 },
-    (_, i) => `Polaroid_Portrait${String(i + 1).padStart(3, "0")}`,
-  ),
-  ...Array.from(
-    { length: 18 },
-    (_, i) => `Polaroid_Landscape${String(i + 1).padStart(3, "0")}`,
-  ),
-]);
+import {
+  holdableNames,
+  interactableNames,
+  STICKY_HOLD_DISTANCE,
+  STICKY_NOTE_PATTERN,
+} from "../data/interactables";
 
 type HoldRotation = [number, number, number];
 
@@ -119,6 +91,23 @@ function MonitorScreenPortal({ monitor }: { monitor: THREE.Object3D }) {
   );
 }
 
+// Where the TV's glass is, in the TV model's own units (measured from the
+// model's "TVScreen" mesh: it spans x -22.4..22.4 and z 9.8..43.9, and its
+// front surface is at y -0.57; the TV faces -y). The video sits right on it so
+// it stays lined up from every angle. If it ever looks off, nudge these.
+//   - y: depth. Smaller = further out of the TV.
+//   - z: height. x: left/right.
+//   - width/height: in pixels; one pixel = distanceFactor / 400 model units.
+//     (2800 x 2100 at distanceFactor 6 = 42 x 31.5 units, a hair inside the
+//     glass so the edges hide behind the TV's frame.)
+const TV_SCREEN = {
+  position: [0, -0.6, 26.84] as [number, number, number],
+  rotation: [Math.PI / 2, 0, 0] as [number, number, number],
+  distanceFactor: 6,
+  width: 2800,
+  height: 2100,
+};
+
 function TVVideoScreenPortal({
   tv,
   isOpen,
@@ -131,12 +120,12 @@ function TVVideoScreenPortal({
   return createPortal(
     <Html
       transform
-      position={[-12, 52, 28]}
-      rotation={[Math.PI / 2, 0, 0]}
-      distanceFactor={3}
+      position={TV_SCREEN.position}
+      rotation={TV_SCREEN.rotation}
+      distanceFactor={TV_SCREEN.distanceFactor}
       style={{
-        width: "11920px",
-        height: "6080px",
+        width: `${TV_SCREEN.width}px`,
+        height: `${TV_SCREEN.height}px`,
         overflow: "hidden",
         // Clicks only reach the screen while the TV is open. When it's closed,
         // clicks go through to the 3D room (so you can click the TV again).
@@ -168,6 +157,13 @@ export default function Room() {
   const closeTV = useStore((state) => state.closeTV);
 
   useEffect(() => {
+    // The sticky notes hang on the wall in three different orientations, so one
+    // shared rotation can't hold them all upright. Instead, each note is held
+    // the way it hangs on the wall: the same angle you'd see it at when
+    // looking straight at it, so it faces you and reads the right way up.
+    scene.updateMatrixWorld(true);
+    const wallRotation = new THREE.Quaternion();
+
     scene.traverse((object) => {
       if (interactableNames.has(object.name)) {
         object.userData.interactable = true;
@@ -181,6 +177,14 @@ export default function Room() {
 
       if (correction) {
         object.userData.holdRotation = correction;
+      }
+
+      if (STICKY_NOTE_PATTERN.test(object.name)) {
+        object.getWorldQuaternion(wallRotation);
+        const euler = new THREE.Euler().setFromQuaternion(wallRotation, "XYZ");
+
+        object.userData.holdRotation = [euler.x, euler.y, euler.z];
+        object.userData.holdDistance = STICKY_HOLD_DISTANCE;
       }
     });
   }, [scene]);

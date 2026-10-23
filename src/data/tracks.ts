@@ -5,13 +5,9 @@ export type Track = {
   src: string;
 };
 
+// "Tear in My Heart" (our song) is deliberately NOT first: it sits in the
+// middle of the list (7th of 13), so the magic shows up partway through.
 export const tracks: Track[] = [
-  {
-    id: "tear-in-my-heart",
-    title: "Tear in My Heart",
-    artist: "Twenty One Pilots",
-    src: "/audio/music/tear-in-my-heart.mp3",
-  },
   {
     id: "out-of-my-league",
     title: "Out of My League",
@@ -47,6 +43,12 @@ export const tracks: Track[] = [
     title: "Sweet Child O' Mine",
     artist: "Guns N' Roses",
     src: "/audio/music/sweet-child-o-mine.mp3",
+  },
+  {
+    id: "tear-in-my-heart",
+    title: "Tear in My Heart",
+    artist: "Twenty One Pilots",
+    src: "/audio/music/tear-in-my-heart.mp3",
   },
   {
     id: "isabelle",

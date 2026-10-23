@@ -13,7 +13,7 @@ Take your time. Look around. Click on everything.
 - **The TV.** Edits I made, playing one after another.
 - **The diary.** Our story, page by page, from the very beginning.
 - **The music player.** Our songs. Click it to change the song.
-- **The polaroids and photos on the walls.** Pick them up and have a closer look.
+- **The polaroids, photos and sticky notes.** Pick them up and have a closer look (the notes come up close so you can read them).
 - **The sunset coming through the window.** Because it felt right.
 
 ## How to explore
@@ -29,6 +29,8 @@ Take your time. Look around. Click on everything.
 
 The room also whispers a little hint the first time you try something new.
 
+A counter at the side keeps track of how many things you've found. Find them all, and the room has one last thing for you...
+
 ---
 
 ## For the curious (how it's built)
@@ -42,6 +44,11 @@ npm run build    # make a production build
 ```
 
 The big photo, video and screenshot files are not stored in git (see `.gitignore`), so copy them into `public/media` before running it.
+
+The ending needs two files that are not in git (add them before running it):
+
+- `public/media/from-me-to-you.mp4`, the video that plays from the laptop
+- `public/audio/chime.mp3`, the sound that plays when everything has been found
 
 Easy places to add more memories:
 

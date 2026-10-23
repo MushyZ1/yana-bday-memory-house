@@ -166,7 +166,9 @@ export default function TVScreen({ isOpen, onClose }: TVScreenProps) {
           inset: 0,
           width: "100%",
           height: "100%",
-          objectFit: "cover",
+          // The TV's glass is 4:3. "contain" shows the whole video with black
+          // bars (like a real CRT); "cover" would fill it but crop the sides.
+          objectFit: "contain",
           display: "block",
           background: "#000",
         }}

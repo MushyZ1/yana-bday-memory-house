@@ -5,7 +5,14 @@ import { Canvas } from "@react-three/fiber";
 import { PointerLockControls } from "@react-three/drei";
 import type { PointerLockControls as PointerLockControlsImpl } from "three-stdlib";
 
-import { EffectComposer, Outline, GodRays } from "@react-three/postprocessing";
+import {
+  EffectComposer,
+  Outline,
+  GodRays,
+  ToneMapping,
+  Vignette,
+} from "@react-three/postprocessing";
+import { ToneMappingMode } from "postprocessing";
 
 import Room from "./Room";
 import InteractionSystem from "./InteractionSystem";
@@ -70,7 +77,7 @@ export default function House() {
               density={0.96}
               decay={0.94}
               weight={0.8}
-              exposure={0.65}
+              exposure={0.8}
               clampMax={1}
               blur
             />
@@ -78,6 +85,13 @@ export default function House() {
 
           {/* Shiny glow, only while the magic is showing */}
           {magicVisible && <MagicBloom />}
+
+          {/* A soft darkening at the screen edges draws the eye to the middle */}
+          <Vignette offset={0.3} darkness={0.55} />
+
+          {/* Must come last. Without it, bright areas just clip to flat orange.
+              Try AGX or NEUTRAL instead of ACES_FILMIC for a different look. */}
+          <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
         </EffectComposer>
       </Canvas>
 
